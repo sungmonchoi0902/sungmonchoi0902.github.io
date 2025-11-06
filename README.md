@@ -1,1 +1,0 @@
-# sungmonchoi0902.github.io
