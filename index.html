@@ -101,7 +101,7 @@ function draw() {
   let vol = mic.getLevel();
   smoothVol = lerp(smoothVol, vol, 0.1);
 
-  let mosaicSize = int(map(smoothVol, 0, 0.05, 60, 1, true));
+  let mosaicSize = int(map(smoothVol, 0, 0.3, 60, 1, true));
 
   cam.loadPixels();
   if (cam.pixels.length === 0) return;
