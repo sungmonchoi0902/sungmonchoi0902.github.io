@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <header>
@@ -42,5 +41,121 @@ good afternoon, 261!
 	    <script src="orbits.js"></script>
 </div>
 </p>
+
+<!-- 🔥 여기에 네 p5.js 코드 추가됨 -->
+<script>
+let cam;
+let mic;
+let smoothVol = 0;
+
+// 배경 오실레이터
+let bgOsc1, bgOsc2, bgOsc3;
+
+// 삐 소리 오실레이터
+let beepOsc;
+let isBeepOn = false;
+let isBgOn = true;
+
+function setup() {
+  createCanvas(640, 480);
+  pixelDensity(1);
+
+  cam = createCapture(VIDEO);
+  cam.size(320, 240);
+  cam.hide();
+
+  mic = new p5.AudioIn();
+  mic.start();
+
+  noStroke();
+  rectMode(CORNER);
+  frameRate(30);
+
+  // 배경 오실레이터
+  bgOsc1 = new p5.Oscillator('sine');
+  bgOsc2 = new p5.Oscillator('sine');
+  bgOsc3 = new p5.Oscillator('sine');
+
+  bgOsc1.freq(midiToFreq(48)); // C3
+  bgOsc2.freq(midiToFreq(62)); // D4
+  bgOsc3.freq(midiToFreq(71)); // B4
+
+  bgOsc1.amp(0.03);
+  bgOsc2.amp(0.025);
+  bgOsc3.amp(0.02);
+
+  bgOsc1.start();
+  bgOsc2.start();
+  bgOsc3.start();
+
+  // 삐 소리
+  beepOsc = new p5.Oscillator('sine');
+  beepOsc.freq(880); 
+  beepOsc.amp(0);
+  beepOsc.start();
+}
+
+function draw() {
+  background(0);
+
+  let vol = mic.getLevel();
+  smoothVol = lerp(smoothVol, vol, 0.1);
+
+  let mosaicSize = int(map(smoothVol, 0, 0.05, 60, 1, true));
+
+  cam.loadPixels();
+  if (cam.pixels.length === 0) return;
+
+  push();
+  translate(width, 0);
+  scale(-1, 1);
+
+  if (mosaicSize > 2) {
+    // 모자이크
+    for (let y = 0; y < cam.height; y += mosaicSize) {
+      for (let x = 0; x < cam.width; x += mosaicSize) {
+        let i = (y * cam.width + x) * 4;
+        let r = cam.pixels[i];
+        let g = cam.pixels[i + 1];
+        let b = cam.pixels[i + 2];
+        fill(r, g, b);
+        rect(x * 2, y * 2, mosaicSize * 2, mosaicSize * 2);
+      }
+    }
+
+    if (isBeepOn) {
+      beepOsc.amp(0, 0.3);
+      isBeepOn = false;
+    }
+    if (!isBgOn) {
+      bgOsc1.amp(0.03, 0.5);
+      bgOsc2.amp(0.025, 0.5);
+      bgOsc3.amp(0.02, 0.5);
+      isBgOn = true;
+    }
+
+  } else {
+    image(cam, 0, 0, width, height);
+
+    if (!isBeepOn) {
+      beepOsc.amp(0.2, 0.2);
+      isBeepOn = true;
+    }
+    if (isBgOn) {
+      bgOsc1.amp(0, 0.5);
+      bgOsc2.amp(0, 0.5);
+      bgOsc3.amp(0, 0.5);
+      isBgOn = false;
+    }
+  }
+
+  pop();
+}
+
+function mousePressed() {
+  userStartAudio();
+}
+</script>
+
 </body>
 </html>
