@@ -338,3 +338,79 @@ function draw() {
 
 ##Create a website
 
+I had no information about how to create a website, and I wanted to design it in a minimal style. So I told ChatGPT what I wanted and asked it to create it for me.
+
+![html](img/html.png)
+
+However, although it worked well in p5.js, it didn’t work on the website. So I asked ChatGPT about it.
+
+![micsolve](img/micsolve.png)
+
+I tried making the changes ChatGPT suggested, but it still didn’t work.
+
+`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meet Myself Through Shout</title>
+  <!-- p5.js (version 1.11.10, as you confirmed works) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.10/p5.min.js"></script>
+  <!-- Your sketch file -->
+  <script src="sketch.js" defer></script>
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: "Helvetica", sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    h1 {
+      font-size: 2.4rem;
+      margin-bottom: 10px;
+    }
+    p.description {
+      max-width: 650px;
+      margin: 0 auto 25px auto;
+      font-size: 1.1rem;
+      line-height: 1.6;
+      opacity: 0.9;
+    }
+    hr {
+      width: 70%;
+      margin: 40px auto;
+      border: 0;
+      border-top: 1px solid #444;
+    }
+    #canvas-container {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Meet Myself Through Shout</h1>
+  <p class="description">
+    The emotions you’ve hidden, the voice you’ve been suppressing.<br>
+    The moment the volume rises, your true self, once concealed, awakens.
+  </p>
+  <hr />
+  <!-- p5.js canvas will be placed here -->
+  <div id="canvas-container"></div>
+</body>
+</html>
+`
+
+But when I opened it on my phone, it worked. So I asked ChatGPT about it.
+
+![opw](img/opw.png)
+
+ChatGPT explained that on a PC, only button clicks are recognized as gestures, so it wouldn’t work. It suggested adding the code shown below, so I tried it.
+
+![add](img/add.png)
+
+Finally, it worked! The issue was that browsers like Chrome block microphone input unless the user clicks first. Once I addressed that, the problem was resolved.
+
+###Through this process, I learned the basic structure of HTML and how to design a webpage, and I also figured out how to handle microphone input.
