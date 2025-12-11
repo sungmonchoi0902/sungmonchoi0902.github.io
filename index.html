@@ -2,207 +2,168 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Meet Myself Through Shout</title>
+<title>Meet Myself Through Shout — Safari Debug</title>
 
-<!-- p5.js + sound -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.10/p5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.10/addons/p5.sound.min.js"></script>
 
 <style>
-  body {
-    margin: 0;
-    padding: 40px 0;
-    background: white;
-    color: black;
-    font-family: Arial, sans-serif;
-    text-align: center;
-  }
-  .title {
-    font-size: 28px;
-    font-weight: bold;
-  }
-  .desc {
-    margin-top: 10px;
-    font-size: 14px;
-    opacity: 0.8;
-  }
-  .line {
-    width: 60%;
-    margin: 25px auto;
-    border-bottom: 1px solid #ddd;
-  }
-  #sketch {
-    margin-top: 20px;
-  }
-
-  #start-btn {
-    padding: 12px 22px;
-    background: black;
-    color: white;
-    border: none;
-    margin-top: 20px;
-    font-size: 15px;
-    cursor: pointer;
-    border-radius: 6px;
-  }
+  body { margin: 0; padding: 40px; background: #111; color: #fff; font-family: Arial, sans-serif; text-align:center; }
+  #start-btn { padding: 10px 18px; font-size:16px; border-radius:6px; border:none; background:#0a84ff; color:white; cursor:pointer; }
+  #log { margin-top:12px; font-size:13px; color:#ddd; }
+  #meter { width:300px; height:12px; background:#222; margin:10px auto; border-radius:6px; overflow:hidden; }
+  #meterFill { height:100%; width:0%; background:#0f0; }
 </style>
 </head>
-
 <body>
 
-<div class="title">Meet Myself Through Shout</div>
+<h2>Meet Myself Through Shout</h2>
+<p>Click the button below to explicitly unlock audio for Safari / Desktop browsers.</p>
 
-<div class="desc">
-  The emotions you’ve hidden, the voice you’ve been suppressing.<br>
-  The moment the volume rises, your true self, once concealed, awakens.
-</div>
-
-<div class="line"></div>
-
-<button id="start-btn">Start Experience</button>
+<button id="start-btn">Start Audio (Safari-safe)</button>
+<div id="log">log: waiting</div>
+<div id="meter"><div id="meterFill"></div></div>
 
 <div id="sketch"></div>
 
 <script>
-let cam;
-let mic;
-let smoothVol = 0;
-let bgOsc1, bgOsc2, bgOsc3;
-let beepOsc;
-let bgOn = true;
-let beepOn = false;
-
-let cleanMode = false;
-let cleanUntil = 0;
-
+let cam, mic, smoothVol = 0;
+let bgOsc1, bgOsc2, bgOsc3, beepOsc;
 let audioStarted = false;
+let cleanMode = false, cleanUntil = 0;
 
-function setup() {
+const logEl = document.getElementById('log');
+function log(s){ console.log(s); logEl.textContent = 'log: ' + s; }
+
+// Robust start: use navigator.mediaDevices.getUserMedia first (explicit)
+document.getElementById('start-btn').addEventListener('click', async () => {
+  log('Button clicked — requesting getUserMedia...');
+  try {
+    // 1) ask for raw mic via WebAPI to force browser permission prompt
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    log('getUserMedia OK');
+    // 2) resume audio context (for Safari/Chrome)
+    const ctx = getAudioContext();
+    if (ctx && ctx.state !== 'running') {
+      await ctx.resume();
+      log('AudioContext resumed');
+    } else {
+      log('AudioContext already running or not found');
+    }
+    // 3) let p5 know and start p5 mic
+    await userStartAudio();
+    log('userStartAudio called');
+    if (mic) {
+      mic.start();
+      log('mic.start() called');
+    } else {
+      log('mic not created yet, will start in setup');
+    }
+    // 4) start/amp oscillators if not started
+    if (bgOsc1 && !audioStarted) {
+      bgOsc1.start(); bgOsc2.start(); bgOsc3.start(); beepOsc.start();
+      bgOsc1.amp(0.03, 0.5); bgOsc2.amp(0.025, 0.5); bgOsc3.amp(0.02, 0.5);
+      log('oscillators started');
+    }
+    audioStarted = true;
+    // hide button
+    document.getElementById('start-btn').style.display = 'none';
+  } catch (err) {
+    console.error(err);
+    log('getUserMedia failed: ' + (err && err.message ? err.message : err));
+  }
+});
+
+// p5 sketch
+function setup(){
   let c = createCanvas(640, 480);
-  c.parent("sketch");
+  c.parent('sketch');
   pixelDensity(1);
 
+  // cam
   cam = createCapture(VIDEO);
   cam.size(320, 240);
   cam.hide();
 
+  // p5 mic object (do NOT call mic.start() here; will be started after user gesture)
   mic = new p5.AudioIn();
 
-  // Create oscillators (BUT DO NOT start them yet!)
+  // create oscillators but do NOT start them yet (Safari requires start in user gesture)
   bgOsc1 = new p5.Oscillator('sine');
   bgOsc2 = new p5.Oscillator('sine');
   bgOsc3 = new p5.Oscillator('sine');
-
-  bgOsc1.freq(130.81);
-  bgOsc2.freq(293.66);
-  bgOsc3.freq(493.88);
-
-  bgOsc1.amp(0);
-  bgOsc2.amp(0);
-  bgOsc3.amp(0);
+  bgOsc1.freq(130.81); bgOsc2.freq(293.66); bgOsc3.freq(493.88);
+  bgOsc1.amp(0); bgOsc2.amp(0); bgOsc3.amp(0);
 
   beepOsc = new p5.Oscillator('sine');
-  beepOsc.freq(880);
-  beepOsc.amp(0);
+  beepOsc.freq(880); beepOsc.amp(0);
 
-  noStroke();
-  rectMode(CORNER);
-  frameRate(30);
+  noStroke(); rectMode(CORNER); frameRate(30);
+  log('p5 setup complete — waiting for user start');
 }
 
-/* ------------------------------
-    SAFARI FIX — Start Button
---------------------------------*/
-document.getElementById("start-btn").addEventListener("click", async () => {
-  if (!audioStarted) {
-
-    // 1) Unlock audio
-    await getAudioContext().resume();
-    await userStartAudio();
-
-    // 2) Start microphone
-    mic.start();
-
-    // 3) Start oscillators
-    bgOsc1.start();
-    bgOsc2.start();
-    bgOsc3.start();
-    beepOsc.start();
-
-    // fade in bg
-    bgOsc1.amp(0.03, 0.5);
-    bgOsc2.amp(0.025, 0.5);
-    bgOsc3.amp(0.02, 0.5);
-
-    audioStarted = true;
-  }
-});
-
-function draw() {
+function draw(){
   background(0);
 
-  if (!audioStarted) return; // Stop until button pressed
-
-  let vol = mic.getLevel();
+  // show small meter & debug
+  let vol = 0;
+  if (mic && audioStarted) {
+    vol = mic.getLevel();
+  }
   smoothVol = lerp(smoothVol, vol, 0.1);
+  document.getElementById('meterFill').style.width = Math.min(100, smoothVol * 5000) + '%';
 
+  // determine mosaic size (same logic)
   let mosaicSize = int(map(smoothVol, 0, 0.05, 60, 1, true));
-
   cam.loadPixels();
-  if (cam.pixels.length === 0) return;
-
-  if (millis() < cleanUntil) {
-    cleanMode = true;
+  if (cam.pixels.length === 0) {
+    // nothing
   } else {
-    cleanMode = (mosaicSize <= 2);
-  }
+    push();
+    translate(width,0); scale(-1,1);
+    // cleanMode logic
+    if (millis() < cleanUntil) {
+      cleanMode = true;
+    } else {
+      cleanMode = (mosaicSize <= 2);
+    }
+    if (cleanMode && millis() >= cleanUntil) {
+      cleanUntil = millis() + 3000;
+    }
 
-  if (cleanMode && millis() >= cleanUntil) {
-    cleanUntil = millis() + 3000;
-  }
-
-  push();
-  translate(width, 0);
-  scale(-1, 1);
-
-  if (!cleanMode) {
-    for (let y = 0; y < cam.height; y += mosaicSize) {
-      for (let x = 0; x < cam.width; x += mosaicSize) {
-        let i = (y * cam.width + x) * 4;
-        fill(cam.pixels[i], cam.pixels[i+1], cam.pixels[i+2]);
-        rect(x * 2, y * 2, mosaicSize * 2, mosaicSize * 2);
+    if (!cleanMode){
+      for (let y=0;y<cam.height;y+=mosaicSize){
+        for (let x=0;x<cam.width;x+=mosaicSize){
+          let i=(y*cam.width+x)*4;
+          fill(cam.pixels[i], cam.pixels[i+1], cam.pixels[i+2]);
+          rect(x*2, y*2, mosaicSize*2, mosaicSize*2);
+        }
       }
+      if (beepOsc) { beepOsc.amp(0,0.3); }
+      if (bgOsc1) { bgOsc1.amp(0.03,0.5); bgOsc2.amp(0.025,0.5); bgOsc3.amp(0.02,0.5); }
+    } else {
+      image(cam, 0,0, width, height);
+      if (beepOsc) beepOsc.amp(0.2,0.2);
+      if (bgOsc1) { bgOsc1.amp(0,0.5); bgOsc2.amp(0,0.5); bgOsc3.amp(0,0.5); }
     }
-
-    if (beepOn) {
-      beepOsc.amp(0, 0.3);
-      beepOn = false;
-    }
-    if (!bgOn) {
-      bgOsc1.amp(0.03, 0.5);
-      bgOsc2.amp(0.025, 0.5);
-      bgOsc3.amp(0.02, 0.5);
-      bgOn = true;
-    }
-
-  } else {
-    image(cam, 0, 0, width, height);
-
-    if (!beepOn) {
-      beepOsc.amp(0.2, 0.2);
-      beepOn = true;
-    }
-    if (bgOn) {
-      bgOsc1.amp(0, 0.5);
-      bgOsc2.amp(0, 0.5);
-      bgOsc3.amp(0, 0.5);
-      bgOn = false;
-    }
+    pop();
   }
 
-  pop();
+  // debug text
+  fill(255);
+  textSize(12);
+  text('micLevel: ' + nf(vol,1,4) + '  smooth: ' + nf(smoothVol,1,4), width/2, 18);
 }
-</script>
 
+// Extra helpful: expose a manual test function in console
+window.debugMicTest = async function(){
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({audio:true});
+    console.log('raw getUserMedia OK', s);
+  } catch(e){
+    console.warn('raw getUserMedia failed', e);
+  }
+};
+</script>
 </body>
 </html>
