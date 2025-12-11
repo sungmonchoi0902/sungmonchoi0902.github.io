@@ -1,63 +1,75 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<header>
+<head>
 <meta charset="UTF-8">
-<title>tabby cat</title>
-<link href="styles.css" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
-</header>
-<body>
-<h1>
-good afternoon, 261!
-</h1>
-<p>
-  <h2>yooooooooooo</h2>
-  <hr />
-  <div>
-  <blockquote><b><i><u> "meoooooooow" </u></i></b></blockquote>
-</div>
-  <br>
-  <div>
-  <a href="http://racheldevorah.studio"> my real website </a>
-  </div>
-   <br>
-  <div>
-  <img src="oprah.gif">
-</div>
-    <div>
-<ul>
-		<li>corn</li>
-		<li>squash</li>
-		<li>beans</li>
-</ul>
-</div>
-<br>
-<div>
-  <audio controls> <source src="mtec343.mp3" type="audio/mpeg"></audio> 
-  <br>
-</div>
-<div>
-	    <script src="orbits.js"></script>
-</div>
-</p>
+<title>Meet Myself Through Shout</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/addons/p5.sound.min.js"></script>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    background: black;
+    color: white;
+    font-family: "Helvetica", sans-serif;
+    text-align: center;
+  }
 
-<!-- 🔥 여기에 네 p5.js 코드 추가됨 -->
+  .title {
+    margin-top: 40px;
+    font-size: 32px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  .desc {
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    opacity: 0.7;
+  }
+
+  .line {
+    width: 60%;
+    margin: 25px auto;
+    border-bottom: 1px solid #444;
+  }
+
+  #sketch {
+    margin-top: 25px;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="title">Meet my self through shout</div>
+
+<div class="desc">
+  The emotions you’ve hidden, the voice you’ve been suppressing.<br>
+  The moment the volume rises, your true self, once concealed, awakens.
+</div>
+
+<div class="line"></div>
+
+<div id="sketch"></div>
+
 <script>
 let cam;
 let mic;
 let smoothVol = 0;
-
-// 배경 오실레이터
 let bgOsc1, bgOsc2, bgOsc3;
-
-// 삐 소리 오실레이터
 let beepOsc;
-let isBeepOn = false;
-let isBgOn = true;
+let bgOn = true;
+let beepOn = false;
+
+let cleanMode = false; 
+let cleanUntil = 0; 
 
 function setup() {
-  createCanvas(640, 480);
+  let c = createCanvas(640, 480);
+  c.parent("sketch");
+
   pixelDensity(1);
 
   cam = createCapture(VIDEO);
@@ -71,14 +83,13 @@ function setup() {
   rectMode(CORNER);
   frameRate(30);
 
-  // 배경 오실레이터
   bgOsc1 = new p5.Oscillator('sine');
   bgOsc2 = new p5.Oscillator('sine');
   bgOsc3 = new p5.Oscillator('sine');
 
-  bgOsc1.freq(midiToFreq(48)); // C3
-  bgOsc2.freq(midiToFreq(62)); // D4
-  bgOsc3.freq(midiToFreq(71)); // B4
+  bgOsc1.freq(130.81);
+  bgOsc2.freq(293.66);
+  bgOsc3.freq(493.88);
 
   bgOsc1.amp(0.03);
   bgOsc2.amp(0.025);
@@ -88,9 +99,8 @@ function setup() {
   bgOsc2.start();
   bgOsc3.start();
 
-  // 삐 소리
   beepOsc = new p5.Oscillator('sine');
-  beepOsc.freq(880); 
+  beepOsc.freq(880);
   beepOsc.amp(0);
   beepOsc.start();
 }
@@ -101,51 +111,57 @@ function draw() {
   let vol = mic.getLevel();
   smoothVol = lerp(smoothVol, vol, 0.1);
 
-  let mosaicSize = int(map(smoothVol, 0, 0.3, 60, 1, true));
+  let mosaicSize = int(map(smoothVol, 0, 0.05, 60, 1, true));
 
   cam.loadPixels();
   if (cam.pixels.length === 0) return;
+
+  if (millis() < cleanUntil) {
+    cleanMode = true;
+  } else {
+    cleanMode = (mosaicSize <= 2);
+  }
+
+  if (cleanMode && millis() >= cleanUntil) {
+    cleanUntil = millis() + 3000; 
+  }
 
   push();
   translate(width, 0);
   scale(-1, 1);
 
-  if (mosaicSize > 2) {
-    // 모자이크
+  if (!cleanMode) {
     for (let y = 0; y < cam.height; y += mosaicSize) {
       for (let x = 0; x < cam.width; x += mosaicSize) {
         let i = (y * cam.width + x) * 4;
-        let r = cam.pixels[i];
-        let g = cam.pixels[i + 1];
-        let b = cam.pixels[i + 2];
-        fill(r, g, b);
+        fill(cam.pixels[i], cam.pixels[i+1], cam.pixels[i+2]);
         rect(x * 2, y * 2, mosaicSize * 2, mosaicSize * 2);
       }
     }
 
-    if (isBeepOn) {
+    if (beepOn) {
       beepOsc.amp(0, 0.3);
-      isBeepOn = false;
+      beepOn = false;
     }
-    if (!isBgOn) {
+    if (!bgOn) {
       bgOsc1.amp(0.03, 0.5);
       bgOsc2.amp(0.025, 0.5);
       bgOsc3.amp(0.02, 0.5);
-      isBgOn = true;
+      bgOn = true;
     }
 
   } else {
     image(cam, 0, 0, width, height);
 
-    if (!isBeepOn) {
+    if (!beepOn) {
       beepOsc.amp(0.2, 0.2);
-      isBeepOn = true;
+      beepOn = true;
     }
-    if (isBgOn) {
+    if (bgOn) {
       bgOsc1.amp(0, 0.5);
       bgOsc2.amp(0, 0.5);
       bgOsc3.amp(0, 0.5);
-      isBgOn = false;
+      bgOn = false;
     }
   }
 
@@ -155,6 +171,7 @@ function draw() {
 function mousePressed() {
   userStartAudio();
 }
+  
 </script>
 
 </body>
