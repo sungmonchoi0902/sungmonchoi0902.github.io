@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <title>Meet Myself Through Shout</title>
 
-<!-- p5.js 안정 버전 (1.11.10) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.10/p5.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.10/addons/p5.sound.min.js"></script>
+<!-- 안정적으로 마이크가 동작하는 p5.js + p5.sound 버전 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/addons/p5.sound.min.js"></script>
 
 <style>
   body {
@@ -17,57 +17,39 @@
     font-family: "Helvetica", sans-serif;
     text-align: center;
   }
-
-  .title {
-    margin-top: 40px;
-    font-size: 32px;
-    font-weight: 600;
-    letter-spacing: 1px;
-  }
-
-  .desc {
-    margin-top: 10px;
-    font-size: 14px;
-    line-height: 1.5;
-    opacity: 0.7;
-  }
-
-  .line {
-    width: 60%;
-    margin: 25px auto;
-    border-bottom: 1px solid #444;
-  }
-
-  #sketch {
-    margin-top: 25px;
-  }
+  .title { margin-top: 40px; font-size: 32px; font-weight: 600; }
+  .desc { margin-top: 10px; font-size: 14px; opacity: 0.7; line-height: 1.5; }
+  .line { width: 60%; margin: 25px auto; border-bottom: 1px solid #444; }
+  #sketch { margin-top: 25px; }
 </style>
 </head>
 
 <body>
 
 <div class="title">Meet my self through shout</div>
-
 <div class="desc">
   The emotions you’ve hidden, the voice you’ve been suppressing.<br>
   The moment the volume rises, your true self, once concealed, awakens.
 </div>
-
 <div class="line"></div>
-
 <div id="sketch"></div>
 
 <script>
 let cam;
 let mic;
 let smoothVol = 0;
+
 let bgOsc1, bgOsc2, bgOsc3;
 let beepOsc;
+
 let bgOn = true;
 let beepOn = false;
 
 let cleanMode = false; 
-let cleanUntil = 0; 
+let cleanUntil = 0;
+
+// 🔥 데스크탑 입력 기준 threshold 낮춤
+const THRESHOLD = 0.01;
 
 function setup() {
   let c = createCanvas(640, 480);
@@ -80,12 +62,15 @@ function setup() {
   cam.hide();
 
   mic = new p5.AudioIn();
-  mic.start();
+
+  // 🔥 클릭 전까지 오디오 시작되지 않도록 일단 start() 미루기
+  // mic.start();
 
   noStroke();
   rectMode(CORNER);
   frameRate(30);
 
+  // Background oscillators
   bgOsc1 = new p5.Oscillator('sine');
   bgOsc2 = new p5.Oscillator('sine');
   bgOsc3 = new p5.Oscillator('sine');
@@ -111,14 +96,19 @@ function setup() {
 function draw() {
   background(0);
 
+  if (!mic.enabled) return; // 🔥 오디오 시작 전 draw 안전 처리
+
   let vol = mic.getLevel();
   smoothVol = lerp(smoothVol, vol, 0.1);
 
-  let mosaicSize = int(map(smoothVol, 0, 0.05, 60, 1, true));
+  console.log("volume:", vol); // 🔥 실제 입력 확인용 (지우지 마!)
+
+  let mosaicSize = int(map(smoothVol, 0, THRESHOLD, 60, 1, true));
 
   cam.loadPixels();
   if (cam.pixels.length === 0) return;
 
+  // Clean mode 판단
   if (millis() < cleanUntil) {
     cleanMode = true;
   } else {
@@ -134,6 +124,7 @@ function draw() {
   scale(-1, 1);
 
   if (!cleanMode) {
+    // mosaic mode
     for (let y = 0; y < cam.height; y += mosaicSize) {
       for (let x = 0; x < cam.width; x += mosaicSize) {
         let i = (y * cam.width + x) * 4;
@@ -142,10 +133,13 @@ function draw() {
       }
     }
 
+    // turn off beep
     if (beepOn) {
       beepOsc.amp(0, 0.3);
       beepOn = false;
     }
+
+    // turn on bg
     if (!bgOn) {
       bgOsc1.amp(0.03, 0.5);
       bgOsc2.amp(0.025, 0.5);
@@ -154,6 +148,7 @@ function draw() {
     }
 
   } else {
+    // clean mode
     image(cam, 0, 0, width, height);
 
     if (!beepOn) {
@@ -169,6 +164,14 @@ function draw() {
   }
 
   pop();
+}
+
+// 🔥 브라우저가 요구하는 "사용자 인터랙션 후 오디오 시작"
+function mousePressed() {
+  userStartAudio();
+  mic.start(() => {
+    console.log("Microphone started!");
+  });
 }
 </script>
 
