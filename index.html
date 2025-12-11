@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Meet myself through shout</title>
+<title>Meet Myself Through Shout</title>
 
 <!-- p5.js + sound -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.10/p5.min.js"></script>
@@ -34,12 +34,24 @@
   #sketch {
     margin-top: 20px;
   }
+
+  /* Unlock button */
+  #start-btn {
+    font-size: 20px;
+    padding: 12px 20px;
+    border: none;
+    background: black;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 20px;
+  }
 </style>
 </head>
 
 <body>
 
-<div class="title">Meet my self through shout</div>
+<div class="title">Meet Myself Through Shout</div>
 
 <div class="desc">
   The emotions you’ve hidden, the voice you’ve been suppressing.<br>
@@ -47,6 +59,9 @@
 </div>
 
 <div class="line"></div>
+
+<!-- ▶▶ AUDIO UNLOCK BUTTON ◀◀ -->
+<button id="start-btn">Click to Start Audio</button>
 
 <div id="sketch"></div>
 
@@ -59,8 +74,15 @@ let beepOsc;
 let bgOn = true;
 let beepOn = false;
 
-let cleanMode = false; 
-let cleanUntil = 0; 
+let cleanMode = false;
+let cleanUntil = 0;
+
+// 🔓 AUDIO UNLOCK
+document.getElementById("start-btn").addEventListener("click", async () => {
+  await getAudioContext().resume();  // Chrome desktop unlock
+  await userStartAudio();            // p5.js unlock
+  document.getElementById("start-btn").style.display = "none"; // Hide button
+});
 
 function setup() {
   let c = createCanvas(640, 480);
@@ -118,7 +140,7 @@ function draw() {
   }
 
   if (cleanMode && millis() >= cleanUntil) {
-    cleanUntil = millis() + 3000; 
+    cleanUntil = millis() + 3000;
   }
 
   push();
