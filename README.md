@@ -10,7 +10,7 @@
 
 ###In this process, I will create a mosaic effect and make it disappear as the microphone input gets louder.
 
-I made this using p5.js, and I checked the reference site to create a camera, but it was hard to find, so I asked ChatGPT.
+I made this using p5.js, and I checked the reference site to create a camera, but it was hard to find, so I asked ChatGPT. 
 
 ![camcall](img/camcall.png)
 
