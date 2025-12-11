@@ -12,6 +12,8 @@
 
 I made this using p5.js, and I checked the reference site to create a camera, but it was hard to find, so I asked ChatGPT. 
 
+First, I declared a variable called cam and created a canvas of an appropriate size. Then, to receive the webcam stream, I used the createCapture(VIDEO) function and matched the video input size to the canvas size. I used cam.hide() because createCapture(VIDEO) automatically displays a default video element in the browser, and if that appears along with the video drawn on the canvas, the screen would show two overlapping videos, making the UI messy. By using hide(), I hid the default browser video and displayed only the one drawn on the canvas. After that, the draw() function ran every frame, and background(0) was used to repaint the canvas black each frame so that no afterimages remained. Finally, I used image(cam, 0, 0, width, height) to display the webcam video across the entire canvas.
+
 ![camcall](img/camcall.png)
 
 However, the generated camera acted like a mirror, my image didn’t move naturally and it moved in the opposite direction of my actual movement. So I used push and pop codes.
@@ -32,7 +34,9 @@ function draw() {
 }
 `
 
-But it didn't work. So I asked Chat gpt, and I realized that I forgot 'traslate'.
+But it didn't work. So I asked Chat gpt, and I realized that I forgot 'traslate' and 'image'. 
+
+When I flipped the screen horizontally using scale(-1, 1), the video was mirrored off to the left and became invisible. To fix this, I used translate to shift the entire canvas 640 pixels to the right so the flipped video would appear back inside the visible area. Also, the webcam video didn’t show up because I forgot to include the image() function, which was the main cause of the issue.
 
 ![mirrorcam](img/mirrorcam.png)
 
@@ -44,7 +48,16 @@ I looked up several references to implement a mosaic effect, but I still couldn�
 
 ![mosaic](img/mosaic.png)
 
-I understood the basic idea, but I didn’t fully grasp how it works.
+First, I set blockSize = 20 to define the block size used for the mosaic effect. I also used pixelDensity(1);, which seems to be related to how pixels are handled on the canvas, but I didn’t fully understand this part. Then I adjusted the resolution with cam.size(320, 240) to make the mosaic look smoother. The function cam.loadPixels(); loads the pixel data from the camera, and without it, the pixel information doesn’t update, causing the screen to appear completely black. The line if (cam.pixels.length === 0) return; is used to skip the code temporarily when the camera isn’t ready yet. Here, return means “don’t execute the code below this line and just end this frame.”
+
+The loops 
+`
+for (let y = 0; y < cam.height; y += blockSize) {
+for (let x = 0; x < cam.width; x += blockSize) {
+`
+iterate through the entire video, skipping by blockSize each time. The line let i = (y * cam.width + x) * 4; calculates the position in the pixel array, but I didn’t fully understand how this calculation works. I do know that i, i+1, and i+2 correspond to the R, G, and B values, but I’m not exactly sure why the array is structured this way.
+
+The reason the mosaic appears transparent is not because it is actually transparent, but because the “clarity” of the image is reduced. When blockSize becomes larger, multiple small pixels are replaced by one big color block. This removes the detailed features of the face and leaves only large patches of color, making the image blurry and faint. That’s why it looks almost transparent.
 
 ![mosaicsuc](img/mosaicsuc.png)
 
@@ -61,7 +74,9 @@ I wanted the mosaic to clear up as the microphone signal increased, and for it t
 
 ![dismosaic](img/dismosaic.png)
 
-This was very difficult to understand, and to be honest, I still don’t fully understand it. And the maximum volume at which the mosaic disappeared was too low, so I adjusted it to a more appropriate level.
+This was very difficult to understand.
+
+First, I used smoothVol = lerp(smoothVol, vol, 0.1); to smooth out the microphone input. Without this, the mic values would jump abruptly, causing the screen to shake constantly. The map() function converts a value from one range to another while keeping its proportional relationship. Here, I used it to convert the microphone volume into the mosaic block size. I set the minimum volume to 0 and the maximum to 0.03, but 0.03 is actually a very small sound level, so I plan to adjust it to a higher value later. When the volume is low, I set the mosaic size to 60 so the screen appears blocky. As the volume increases, the mosaic size decreases to as small as 1, making the video gradually clearer. The final parameter, true, prevents the value from going outside the specified range. This keeps the behavior stable so the block size doesn’t jump unexpectedly even when the sound is too loud or too quiet.
 
 ###Through this process, I realized how the mosaic effect is generated. And I think I’ll be able to create interactive art on my own from now on.
 
@@ -188,6 +203,14 @@ I asked ChatGPT why it wasn’t working.
 
 I realized that I had forgotten to set the amplitude output. After assigning an appropriate value, it worked properly.
 
+In this part, I added a feature that turns the beep oscillator and the background oscillators on and off depending on the situation. First, when beepOn is true inside the if statement, the code beepOsc.amp(0, 0.3); slowly lowers the beep sound’s volume down to 0 over 0.3 seconds, effectively turning it off. Then, by setting beepOn = false;, I marked that the beep sound is now in the “off” state.
+
+Next, when bgOn is false, the three background oscillators gradually increase their amp values to 0.03, 0.025, and 0.02 over 0.5 seconds. This creates a state where, when the mosaic effect is fully cleared, the background sound turns on while the beep sound stays off.
+
+On the other hand, the else section runs when the mosaic effect appears again. The line image code displays the actual webcam video, and if beepOn is false, the code beepOsc.amp(0.2, 0.2); raises the beep sound’s volume to 0.2 over 0.2 seconds, making the beep sound come back. Then beepOn = true; marks that the beep sound is now turned on.
+
+Finally, when bgOn is true, all three background oscillators gradually reduce their volume to 0 over 0.5 seconds, turning the background sound off, and bgOn = false; updates that state. In other words, when the mosaic appears again, the beep sound turns on, and the background sound turns off, completing the intended behavior.
+
 `
 if (beepOn) {
       beepOsc.amp(0,0.3);
@@ -228,7 +251,15 @@ However, the stop function was only for stopping audio and couldn’t be used to
 
 ![hts](img/hts.png)
 
-And I used this code as it said.
+And I used this code as it said. 
+
+This code is designed to keep the mosaic completely removed for three seconds once it disappears. First, I created a variable called cleanMode, which stores whether the mosaic is currently in a fully cleared state. I also used cleanUntil to record the time until which this clean mode should be maintained.
+
+If millis() is still less than cleanUntil, meaning the set time hasn’t passed yet, the code keeps cleanMode set to true. This means “don’t bring the mosaic back yet—three seconds haven’t passed, so keep the screen clean.” On the other hand, if millis() is greater than cleanUntil, then cleanMode only becomes true when mosaicSize is 2 or below, which represents the moment when the mosaic blocks become extremely small and the screen appears fully clear.
+
+If cleanMode becomes true and millis() is greater than cleanUntil at the same time, the code updates cleanUntil to millis() + 3000, which sets a new end time three seconds into the future. This way, the moment the mosaic fully disappears, cleanMode turns on, and even if the volume drops afterward, the mosaic won’t return for three full seconds.
+
+Overall, this code detects the moment when the mosaic becomes completely clear and smoothly keeps that state for three seconds.
 
 `
 let cleanMode = false;
@@ -343,6 +374,8 @@ I had no information about how to create a website, and I wanted to design it in
 ![html](img/html.png)
 
 However, although it worked well in p5.js, it didn’t work on the website. So I asked ChatGPT about it.
+
+First, I used meta charset="UTF-8" to prevent special characters from breaking, and I set the page title using the title tag. Then, by using text-align: center;, I aligned all the text and elements to the center.
 
 ![micsolve](img/micsolve.png)
 
