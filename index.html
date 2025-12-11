@@ -35,16 +35,15 @@
     margin-top: 20px;
   }
 
-  /* Unlock button */
   #start-btn {
-    font-size: 20px;
-    padding: 12px 20px;
-    border: none;
+    padding: 12px 22px;
     background: black;
     color: white;
-    border-radius: 6px;
+    border: none;
+    margin-top: 20px;
+    font-size: 15px;
     cursor: pointer;
-    margin-bottom: 20px;
+    border-radius: 6px;
   }
 </style>
 </head>
@@ -60,8 +59,7 @@
 
 <div class="line"></div>
 
-<!-- ▶▶ AUDIO UNLOCK BUTTON ◀◀ -->
-<button id="start-btn">Click to Start Audio</button>
+<button id="start-btn">Start Experience</button>
 
 <div id="sketch"></div>
 
@@ -77,12 +75,7 @@ let beepOn = false;
 let cleanMode = false;
 let cleanUntil = 0;
 
-// 🔓 AUDIO UNLOCK
-document.getElementById("start-btn").addEventListener("click", async () => {
-  await getAudioContext().resume();  // Chrome desktop unlock
-  await userStartAudio();            // p5.js unlock
-  document.getElementById("start-btn").style.display = "none"; // Hide button
-});
+let audioStarted = false;
 
 function setup() {
   let c = createCanvas(640, 480);
@@ -94,12 +87,8 @@ function setup() {
   cam.hide();
 
   mic = new p5.AudioIn();
-  mic.start();
 
-  noStroke();
-  rectMode(CORNER);
-  frameRate(30);
-
+  // Create oscillators (BUT DO NOT start them yet!)
   bgOsc1 = new p5.Oscillator('sine');
   bgOsc2 = new p5.Oscillator('sine');
   bgOsc3 = new p5.Oscillator('sine');
@@ -108,27 +97,56 @@ function setup() {
   bgOsc2.freq(293.66);
   bgOsc3.freq(493.88);
 
-  bgOsc1.amp(0.03);
-  bgOsc2.amp(0.025);
-  bgOsc3.amp(0.02);
-
-  bgOsc1.start();
-  bgOsc2.start();
-  bgOsc3.start();
+  bgOsc1.amp(0);
+  bgOsc2.amp(0);
+  bgOsc3.amp(0);
 
   beepOsc = new p5.Oscillator('sine');
   beepOsc.freq(880);
   beepOsc.amp(0);
-  beepOsc.start();
+
+  noStroke();
+  rectMode(CORNER);
+  frameRate(30);
 }
+
+/* ------------------------------
+    SAFARI FIX — Start Button
+--------------------------------*/
+document.getElementById("start-btn").addEventListener("click", async () => {
+  if (!audioStarted) {
+
+    // 1) Unlock audio
+    await getAudioContext().resume();
+    await userStartAudio();
+
+    // 2) Start microphone
+    mic.start();
+
+    // 3) Start oscillators
+    bgOsc1.start();
+    bgOsc2.start();
+    bgOsc3.start();
+    beepOsc.start();
+
+    // fade in bg
+    bgOsc1.amp(0.03, 0.5);
+    bgOsc2.amp(0.025, 0.5);
+    bgOsc3.amp(0.02, 0.5);
+
+    audioStarted = true;
+  }
+});
 
 function draw() {
   background(0);
 
+  if (!audioStarted) return; // Stop until button pressed
+
   let vol = mic.getLevel();
   smoothVol = lerp(smoothVol, vol, 0.1);
 
-  let mosaicSize = int(map(smoothVol, 0, 0.3, 60, 1, true));
+  let mosaicSize = int(map(smoothVol, 0, 0.05, 60, 1, true));
 
   cam.loadPixels();
   if (cam.pixels.length === 0) return;
